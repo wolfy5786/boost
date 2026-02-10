@@ -1,0 +1,371 @@
+{
+  "$schema": "http://json-schema.org/draft/2020-12/schema#",
+  "title": "Unit Test Generation Configuration",
+  "type": "object",
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "description": "Root-level metadata about the unit test suite",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the unit test suite"
+        },
+        "version": {
+          "type": "string",
+          "description": "Version of this test configuration"
+        },
+        "description": {
+          "type": "string"
+        },
+        "author": {
+          "type": "string"
+        },
+        "created_date": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "global_tags": {
+      "type": "array",
+      "description": "Tags applied to all tests unless overridden",
+      "items": { "type": "string" }
+    },
+    "pre_test_all": {
+      "type": "object",
+      "description": "Setup executed once before all unit tests (e.g., seed data, patch environment)",
+      "properties": {
+        "implementation_details": { "type": "string" },
+        "script": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "post_test_all": {
+      "type": "object",
+      "description": "Cleanup executed once after all unit tests",
+      "additionalProperties": true
+    },
+    "pre_test_each": {
+      "type": "object",
+      "description": "Setup executed before each individual unit test",
+      "properties": {
+        "implementation_details": { "type": "string" },
+        "script": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "post_test_each": {
+      "type": "object",
+      "description": "Cleanup executed after each individual unit test",
+      "additionalProperties": true
+    },
+    "test_suites": {
+      "type": "array",
+      "description": "Organized collection of unit test groups (e.g., per module or domain)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of this unit test suite/group"
+          },
+          "description": { "type": "string" },
+          "module": {
+            "type": "string",
+            "description": "Optional: common Python module path for this suite (e.g., 'app.services.user')"
+          },
+          "tags": {
+            "type": "array",
+            "description": "Tags applied to all tests in this suite",
+            "items": { "type": "string" }
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether this suite should be executed"
+          },
+          "tests": {
+            "type": "array",
+            "description": "Unit tests belonging to this suite",
+            "items": { "$ref": "#/$defs/unit_test" }
+          }
+        },
+        "required": ["name", "tests"]
+      }
+    },
+    "tests": {
+      "type": "array",
+      "description": "Flat list of unit tests (alternative to test_suites organization)",
+      "items": { "$ref": "#/$defs/unit_test" }
+    }
+  },
+  "$defs": {
+    "unit_test": {
+      "type": "object",
+      "description": "Individual unit test case definition",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Descriptive name for this unit test"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of what this unit test validates"
+        },
+        "tags": {
+          "type": "array",
+          "description": "Tags for categorizing and filtering unit tests",
+          "items": { "type": "string" }
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["critical", "high", "medium", "low"],
+          "description": "Test priority for execution ordering and reporting"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether this test should be executed"
+        },
+        "depends_on": {
+          "type": "array",
+          "description": "Names of tests that must run successfully before this test",
+          "items": { "type": "string" }
+        },
+        "target": {
+          "type": "object",
+          "description": "Function/method/class under test",
+          "properties": {
+            "module": {
+              "type": "string",
+              "description": "Python module path (e.g., 'app.services.user')"
+            },
+            "object": {
+              "type": "string",
+              "description": "Top-level object name (function, class)"
+            },
+            "method": {
+              "type": "string",
+              "description": "Optional: method name on a class, if applicable"
+            },
+            "signature_hint": {
+              "type": "string",
+              "description": "Optional: human-readable signature or type info to guide generation"
+            }
+          },
+          "required": ["module", "object"]
+        },
+        "inputs": {
+          "type": "array",
+          "description": "One or more input scenarios for this unit test",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Name/label of this input scenario"
+              },
+              "args": {
+                "type": "array",
+                "description": "Positional arguments to pass to the function",
+                "items": {}
+              },
+              "kwargs": {
+                "type": "object",
+                "description": "Keyword arguments to pass to the function",
+                "additionalProperties": true
+              }
+            },
+            "required": ["name"]
+          }
+        },
+        "expected": {
+          "type": "object",
+          "description": "Expected outcomes for the unit test",
+          "properties": {
+            "return_value": {
+              "description": "Expected return value (if function returns)",
+              "nullable": true
+            },
+            "raises": {
+              "type": "object",
+              "description": "Expected exception, if any",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Exception class name"
+                },
+                "message_contains": {
+                  "type": "string",
+                  "description": "Optional: substring expected in exception message"
+                }
+              },
+              "required": ["type"]
+            },
+            "side_effects": {
+              "type": "array",
+              "description": "Expected side effects to assert (DB changes, files, calls, etc.)",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "description": { "type": "string" },
+                  "kind": {
+                    "type": "string",
+                    "enum": ["db", "file", "network", "log", "other"]
+                  },
+                  "assertion": {
+                    "type": "string",
+                    "description": "High-level assertion to perform (e.g., 'user with id X exists in DB')"
+                  }
+                },
+                "required": ["description"]
+              }
+            }
+          }
+        },
+        "mocks": {
+          "type": "array",
+          "description": "Mocks to apply around the unit under test",
+          "items": {
+            "type": "object",
+            "properties": {
+              "target": {
+                "type": "string",
+                "description": "Fully qualified import path to patch (e.g., 'app.services.user.requests.get')"
+              },
+              "behavior": {
+                "type": "string",
+                "description": "Description of desired mock behavior"
+              },
+              "return_value": {
+                "description": "Optional: static return value"
+              },
+              "side_effect": {
+                "description": "Optional: side effect (e.g., raise exception)"
+              }
+            },
+            "required": ["target"]
+          }
+        },
+        "mock_data": {
+          "type": "object",
+          "description": "Optional structured mock data to be available for this test",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Whether this test should include mock data fixtures"
+            },
+            "strategy": {
+              "type": "string",
+              "enum": ["inline", "file", "factory"],
+              "default": "inline",
+              "description": "How mock data is provided"
+            },
+            "fixtures": {
+              "type": "array",
+              "description": "List of mock datasets/fixtures to create",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Logical name of the fixture (e.g., 'user_fixture', 'orders_list')"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "What this mock data represents"
+                  },
+                  "scope": {
+                    "type": "string",
+                    "enum": ["test", "suite"],
+                    "default": "test",
+                    "description": "Lifecycle of the fixture (per-test or per-suite)"
+                  },
+                  "model": {
+                    "type": "string",
+                    "description": "Domain/entity name this fixture relates to (e.g., 'User', 'Order')"
+                  },
+                  "data": {
+                    "type": "array",
+                    "description": "Inline mock records, if strategy is 'inline'",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  },
+                  "file_path": {
+                    "type": "string",
+                    "description": "Path to external data file, if strategy is 'file'"
+                  },
+                  "factory_name": {
+                    "type": "string",
+                    "description": "Name of factory/fixture function to use, if strategy is 'factory'"
+                  }
+                },
+                "required": ["name"]
+              }
+            }
+          }
+        },
+        "variations": {
+          "type": "array",
+          "description": "Variations derived from this base unit test",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Name for this variation"
+              },
+              "details": {
+                "type": "string",
+                "description": "Description of what this variation tests"
+              },
+              "kind": {
+                "type": "string",
+                "enum": ["positive", "edge", "negative"]
+              },
+              "enabled": {
+                "type": "boolean",
+                "default": true
+              },
+              "input_overrides": {
+                "type": "object",
+                "description": "Overrides to base inputs (e.g., different args/kwargs)",
+                "properties": {
+                  "args": {
+                    "type": "array",
+                    "items": {}
+                  },
+                  "kwargs": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
+                }
+              },
+              "expected_overrides": {
+                "type": "object",
+                "description": "Overrides to expected outcomes for this variation",
+                "additionalProperties": true
+              },
+              "order": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Execution order within variations"
+              }
+            }
+          }
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Execution order among all unit tests (must be unique)"
+        }
+      },
+      "required": ["name", "target", "enabled"]
+    }
+  }
+}
+

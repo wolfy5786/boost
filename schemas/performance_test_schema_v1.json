@@ -1,0 +1,374 @@
+{
+  "$schema": "http://json-schema.org/draft/2020-12/schema#",
+  "title": "Performance Test Generation Configuration",
+  "type": "object",
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "description": "Root-level metadata about the performance test suite",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the performance test suite"
+        },
+        "version": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "author": {
+          "type": "string"
+        },
+        "created_date": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+
+    "global_tags": {
+      "type": "array",
+      "description": "Tags applied to all performance tests unless overridden",
+      "items": { "type": "string" }
+    },
+
+    "environment": {
+      "type": "object",
+      "description": "Environment details for running performance tests",
+      "properties": {
+        "base_url": {
+          "type": "string",
+          "description": "Base URL of the system under test"
+        },
+        "services": {
+          "type": "array",
+          "description": "Optional: dependent services that must be healthy",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "type": { "type": "string" },
+              "health_check_url": { "type": "string" }
+            },
+            "required": ["name"]
+          }
+        },
+        "pre_test_all_script": {
+          "type": "string",
+          "description": "Command/script to run once before all performance tests"
+        },
+        "post_test_all_script": {
+          "type": "string",
+          "description": "Command/script to run once after all performance tests"
+        }
+      }
+    },
+
+    "auth_profiles": {
+      "type": "object",
+      "description": "Reusable auth configurations referenced by tests/endpoints",
+      "additionalProperties": {
+        "$ref": "#/$defs/auth"
+      }
+    },
+
+    "test_suites": {
+      "type": "array",
+      "description": "Organized collection of performance test groups",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of this performance test suite/group"
+          },
+          "description": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          },
+          "tests": {
+            "type": "array",
+            "description": "Performance tests belonging to this suite",
+            "items": { "$ref": "#/$defs/performance_test" }
+          }
+        },
+        "required": ["name", "tests"]
+      }
+    },
+
+    "tests": {
+      "type": "array",
+      "description": "Flat list of performance tests (alternative to test_suites organization)",
+      "items": { "$ref": "#/$defs/performance_test" }
+    }
+  },
+
+  "$defs": {
+    "auth": {
+      "type": "object",
+      "description": "Auth configuration using only env/vault variable names",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["bearer", "basic", "api_key", "oauth2", "none"]
+        },
+        "bearer": {
+          "type": "object",
+          "properties": {
+            "token_env_name": { "type": "string" },
+            "prefix": {
+              "type": "string",
+              "default": "Bearer"
+            }
+          }
+        },
+        "basic": {
+          "type": "object",
+          "properties": {
+            "username_env_name": { "type": "string" },
+            "password_env_name": { "type": "string" }
+          }
+        },
+        "api_key": {
+          "type": "object",
+          "properties": {
+            "key_env_name": { "type": "string" },
+            "location": {
+              "type": "string",
+              "enum": ["header", "query"],
+              "default": "header"
+            },
+            "header_or_param_name": { "type": "string" }
+          }
+        },
+        "oauth2": {
+          "type": "object",
+          "properties": {
+            "token_url_env_name": { "type": "string" },
+            "client_id_env_name": { "type": "string" },
+            "client_secret_env_name": { "type": "string" },
+            "scope_env_name": { "type": "string" }
+          }
+        }
+      },
+      "required": ["type"]
+    },
+
+    "performance_test": {
+      "type": "object",
+      "description": "Individual performance/load test definition",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Descriptive name for this performance test"
+        },
+        "description": {
+          "type": "string",
+          "description": "What scenario this performance test covers"
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["critical", "high", "medium", "low"]
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+
+        "workload": {
+          "type": "object",
+          "description": "How load is applied over time",
+          "properties": {
+            "pattern": {
+              "type": "string",
+              "enum": ["constant", "ramp", "spike", "step"],
+              "default": "constant"
+            },
+            "duration_seconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "concurrent_users": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Target number of virtual users / workers"
+            },
+            "ramp_up_seconds": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Time to ramp up to full load"
+            },
+            "steps": {
+              "type": "array",
+              "description": "For step/ramp patterns: sequence of load levels",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "duration_seconds": { "type": "integer", "minimum": 1 },
+                  "concurrent_users": { "type": "integer", "minimum": 1 }
+                },
+                "required": ["duration_seconds", "concurrent_users"]
+              }
+            }
+          },
+          "required": ["duration_seconds", "concurrent_users"]
+        },
+
+        "target": {
+          "type": "object",
+          "description": "System operation being stressed",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": ["http", "grpc", "message", "custom"],
+              "default": "http"
+            },
+            "http": {
+              "type": "object",
+              "properties": {
+                "method": {
+                  "type": "string",
+                  "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]
+                },
+                "path": {
+                  "type": "string",
+                  "description": "Path appended to environment.base_url, or full URL"
+                },
+                "headers": {
+                  "type": "object",
+                  "additionalProperties": { "type": "string" }
+                },
+                "auth_profile": {
+                  "type": "string",
+                  "description": "Name of auth profile from auth_profiles"
+                }
+              },
+              "required": ["method", "path"]
+            },
+            "message": {
+              "type": "object",
+              "properties": {
+                "queue": { "type": "string" },
+                "description": { "type": "string" }
+              }
+            },
+            "custom": {
+              "type": "object",
+              "properties": {
+                "handler_name": {
+                  "type": "string",
+                  "description": "Name of a custom load operation handler"
+                }
+              }
+            }
+          },
+          "required": ["kind"]
+        },
+
+        "payload_model": {
+          "type": "object",
+          "description": "How request/message payloads are generated",
+          "properties": {
+            "strategy": {
+              "type": "string",
+              "enum": ["static", "from_file", "random_sample", "schema_based"],
+              "default": "static"
+            },
+            "static_payload": {
+              "type": "object",
+              "description": "Used when strategy is 'static'",
+              "additionalProperties": true
+            },
+            "file_path": {
+              "type": "string",
+              "description": "Used when strategy is 'from_file'"
+            },
+            "schema_hint": {
+              "type": "string",
+              "description": "Optional: JSON schema / OpenAPI ref for schema_based generation"
+            }
+          }
+        },
+
+        "metrics_thresholds": {
+          "type": "object",
+          "description": "SLO/SLA-style thresholds for this test",
+          "properties": {
+            "max_avg_latency_ms": { "type": "number" },
+            "max_p95_latency_ms": { "type": "number" },
+            "max_p99_latency_ms": { "type": "number" },
+            "min_throughput_per_sec": { "type": "number" },
+            "max_error_rate": {
+              "type": "number",
+              "description": "Maximum acceptable error rate (0.0–1.0)"
+            }
+          }
+        },
+
+        "expected_logs": {
+          "type": "array",
+          "description": "Expected or forbidden log patterns under load",
+          "items": {
+            "type": "object",
+            "properties": {
+              "level": { "type": "string" },
+              "contains": { "type": "string" },
+              "forbidden": {
+                "type": "boolean",
+                "default": false,
+                "description": "If true, this pattern should NOT appear"
+              }
+            }
+          }
+        },
+
+        "variations": {
+          "type": "array",
+          "description": "Variations derived from this base performance test (different load profiles, etc.)",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "details": { "type": "string" },
+              "enabled": { "type": "boolean", "default": true },
+              "workload_overrides": {
+                "type": "object",
+                "description": "Overrides to workload for this variation",
+                "additionalProperties": true
+              },
+              "threshold_overrides": {
+                "type": "object",
+                "description": "Overrides to metrics thresholds for this variation",
+                "additionalProperties": true
+              },
+              "order": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+
+        "order": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Execution order among all performance tests (must be unique)"
+        }
+      },
+      "required": ["name", "workload", "target", "enabled"]
+    }
+  }
+}
+

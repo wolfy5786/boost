@@ -1,0 +1,390 @@
+{
+  "$schema": "http://json-schema.org/draft/2020-12/schema#",
+  "title": "E2E Test Generation Configuration",
+  "type": "object",
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "description": "Root-level metadata about the E2E test suite",
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "description": { "type": "string" },
+        "author": { "type": "string" },
+        "created_date": { "type": "string", "format": "date-time" }
+      }
+    },
+
+    "global_tags": {
+      "type": "array",
+      "description": "Tags applied to all E2E tests unless overridden",
+      "items": { "type": "string" }
+    },
+
+    "environment": {
+      "type": "object",
+      "description": "Environment and browser/device configuration for E2E tests",
+      "properties": {
+        "base_url": {
+          "type": "string",
+          "description": "Base URL of the application under test"
+        },
+        "browsers": {
+          "type": "array",
+          "description": "Default browsers to run against",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "enum": ["chromium", "chrome", "firefox", "webkit", "safari", "edge"]
+              },
+              "headless": { "type": "boolean", "default": true },
+              "viewport": {
+                "type": "object",
+                "properties": {
+                  "width": { "type": "integer" },
+                  "height": { "type": "integer" }
+                }
+              },
+              "device": {
+                "type": "string",
+                "description": "Optional preset device name (e.g., 'iPhone 14', 'Pixel 7')"
+              }
+            },
+            "required": ["name"]
+          }
+        },
+        "default_user_profiles": {
+          "type": "array",
+          "description": "Reusable user login profiles",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Profile name (e.g., 'admin', 'basic_user')"
+              },
+              "description": { "type": "string" },
+              "auth_profile": {
+                "type": "string",
+                "description": "Optional reference to an auth profile"
+              }
+            },
+            "required": ["name"]
+          }
+        }
+      }
+    },
+
+    "auth_profiles": {
+      "type": "object",
+      "description": "Reusable auth configurations (env/vault based), for APIs behind the UI if needed",
+      "additionalProperties": {
+        "$ref": "#/$defs/auth"
+      }
+    },
+
+    "test_suites": {
+      "type": "array",
+      "description": "Organized collection of E2E test groups (e.g., per feature or user journey)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "enabled": { "type": "boolean", "default": true },
+          "tests": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/e2e_test" }
+          }
+        },
+        "required": ["name", "tests"]
+      }
+    },
+
+    "tests": {
+      "type": "array",
+      "description": "Flat list of E2E tests (alternative to test_suites organization)",
+      "items": { "$ref": "#/$defs/e2e_test" }
+    }
+  },
+
+  "$defs": {
+    "auth": {
+      "type": "object",
+      "description": "Auth config using only env/vault variable names (if E2E flows hit protected APIs directly)",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["bearer", "basic", "api_key", "oauth2", "none"]
+        },
+        "bearer": {
+          "type": "object",
+          "properties": {
+            "token_env_name": { "type": "string" },
+            "prefix": { "type": "string", "default": "Bearer" }
+          }
+        },
+        "basic": {
+          "type": "object",
+          "properties": {
+            "username_env_name": { "type": "string" },
+            "password_env_name": { "type": "string" }
+          }
+        },
+        "api_key": {
+          "type": "object",
+          "properties": {
+            "key_env_name": { "type": "string" },
+            "location": {
+              "type": "string",
+              "enum": ["header", "query"],
+              "default": "header"
+            },
+            "header_or_param_name": { "type": "string" }
+          }
+        },
+        "oauth2": {
+          "type": "object",
+          "properties": {
+            "token_url_env_name": { "type": "string" },
+            "client_id_env_name": { "type": "string" },
+            "client_secret_env_name": { "type": "string" },
+            "scope_env_name": { "type": "string" }
+          }
+        }
+      },
+      "required": ["type"]
+    },
+
+    "step": {
+      "type": "object",
+      "description": "Single E2E step in a scenario",
+      "properties": {
+        "name": { "type": "string", "description": "Optional step name" },
+        "action": {
+          "type": "string",
+          "enum": [
+            "navigate",
+            "click",
+            "type",
+            "press_key",
+            "select",
+            "wait_for_selector",
+            "assert_text",
+            "assert_url",
+            "assert_visible",
+            "assert_not_visible",
+            "screenshot"
+          ]
+        },
+        "selector": {
+          "type": "string",
+          "description": "Locator (CSS/xpath/test-id) for actions on elements"
+        },
+        "selector_type": {
+          "type": "string",
+          "enum": ["css", "xpath", "text", "test_id"],
+          "default": "css"
+        },
+        "value": {
+          "description": "Input value for actions like 'type', or expected text for assertions"
+        },
+        "url": {
+          "type": "string",
+          "description": "For 'navigate' or 'assert_url' steps (relative to base_url or full URL)"
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "description": "Optional timeout override for this step"
+        },
+        "screenshot_name": {
+          "type": "string",
+          "description": "Optional name if taking a screenshot"
+        }
+      },
+      "required": ["action"]
+    },
+
+    "e2e_test": {
+      "type": "object",
+      "description": "Individual E2E user journey",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Descriptive name for this E2E test"
+        },
+        "description": {
+          "type": "string",
+          "description": "High-level description of the user journey"
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["critical", "high", "medium", "low"]
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "depends_on": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Names of tests that must run successfully before this one"
+        },
+
+        "browser": {
+          "type": "object",
+          "description": "Overrides or selects browser/device for this test",
+          "properties": {
+            "name": { "type": "string" },
+            "headless": { "type": "boolean" },
+            "viewport": {
+              "type": "object",
+              "properties": {
+                "width": { "type": "integer" },
+                "height": { "type": "integer" }
+              }
+            },
+            "device": { "type": "string" }
+          }
+        },
+
+        "user_profile": {
+          "type": "string",
+          "description": "Name of user profile from environment.default_user_profiles"
+        },
+
+        "preconditions": {
+          "type": "array",
+          "description": "Preconditions to ensure before starting the flow (e.g., data seeded, user exists)",
+          "items": { "type": "string" }
+        },
+
+        "mock_data": {
+          "type": "object",
+          "description": "Optional seeded data / fixtures needed for this E2E flow",
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "strategy": {
+              "type": "string",
+              "enum": ["inline", "file", "factory"],
+              "default": "inline"
+            },
+            "fixtures": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "target": {
+                    "type": "string",
+                    "description": "Where to apply (e.g., 'postgres.users', 'redis.sessions')"
+                  },
+                  "data": {
+                    "type": "array",
+                    "items": { "type": "object", "additionalProperties": true }
+                  },
+                  "file_path": { "type": "string" },
+                  "factory_name": { "type": "string" }
+                },
+                "required": ["name"]
+              }
+            }
+          }
+        },
+
+        "scenario_steps": {
+          "type": "array",
+          "description": "Ordered list of steps the user takes in this E2E flow",
+          "items": { "$ref": "#/$defs/step" }
+        },
+
+        "expected_state": {
+          "type": "object",
+          "description": "Optional system-level assertions after the flow (e.g., DB state, emails sent)",
+          "properties": {
+            "datastores": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "target": { "type": "string" },
+                  "assertions": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "description": { "type": "string" },
+                        "query": { "type": "string" },
+                        "expected": {}
+                      },
+                      "required": ["description"]
+                    }
+                  }
+                },
+                "required": ["target"]
+              }
+            }
+          }
+        },
+
+        "expected_logs": {
+          "type": "array",
+          "description": "Expected or forbidden log patterns during this flow",
+          "items": {
+            "type": "object",
+            "properties": {
+              "level": { "type": "string" },
+              "contains": { "type": "string" },
+              "forbidden": {
+                "type": "boolean",
+                "default": false
+              }
+            }
+          }
+        },
+
+        "variations": {
+          "type": "array",
+          "description": "Variations on this E2E flow (e.g., different browsers, locales, negative paths)",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "details": { "type": "string" },
+              "enabled": { "type": "boolean", "default": true },
+              "browser_overrides": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "step_overrides": {
+                "type": "array",
+                "description": "Optional: overriding or inserting steps",
+                "items": { "$ref": "#/$defs/step" }
+              },
+              "order": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+
+        "order": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Execution order among all E2E tests (must be unique)"
+        }
+      },
+      "required": ["name", "scenario_steps", "enabled"]
+    }
+  }
+}
+

@@ -1,0 +1,550 @@
+{
+  "$schema": "http://json-schema.org/draft/2020-12/schema#",
+  "title": "Integration Test Generation Configuration",
+  "type": "object",
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "description": "Root-level metadata about the integration test suite",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the integration test suite"
+        },
+        "version": {
+          "type": "string",
+          "description": "Version of this test configuration"
+        },
+        "description": {
+          "type": "string"
+        },
+        "author": {
+          "type": "string"
+        },
+        "created_date": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+
+    "global_tags": {
+      "type": "array",
+      "description": "Tags applied to all integration tests unless overridden",
+      "items": { "type": "string" }
+    },
+
+    "environment": {
+      "type": "object",
+      "description": "Environment and dependencies required for integration tests",
+      "properties": {
+        "services": {
+          "type": "array",
+          "description": "List of external or internal services that must be available",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Service name (e.g., 'postgres', 'redis', 'user-service')"
+              },
+              "type": {
+                "type": "string",
+                "description": "Service type (db, queue, http, grpc, etc.)"
+              },
+              "description": {
+                "type": "string"
+              },
+              "endpoint": {
+                "type": "string",
+                "description": "Connection string or URL if applicable"
+              }
+            },
+            "required": ["name"]
+          }
+        },
+        "pre_test_all_script": {
+          "type": "string",
+          "description": "Script or command to run once before all integration tests (e.g., migrations, seeding)"
+        },
+        "post_test_all_script": {
+          "type": "string",
+          "description": "Script or command to run once after all integration tests"
+        }
+      }
+    },
+
+    "pre_test_all": {
+      "type": "object",
+      "description": "Setup executed once before all integration tests",
+      "properties": {
+        "implementation_details": { "type": "string" },
+        "script": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+
+    "post_test_all": {
+      "type": "object",
+      "description": "Cleanup executed once after all integration tests",
+      "additionalProperties": true
+    },
+
+    "pre_test_each": {
+      "type": "object",
+      "description": "Setup executed before each individual integration test",
+      "properties": {
+        "implementation_details": { "type": "string" },
+        "script": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+
+    "post_test_each": {
+      "type": "object",
+      "description": "Cleanup executed after each individual integration test",
+      "additionalProperties": true
+    },
+
+    "test_suites": {
+      "type": "array",
+      "description": "Organized collection of integration test groups (e.g., per bounded context or feature)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of this integration test suite/group"
+          },
+          "description": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "description": "Tags applied to all tests in this suite",
+            "items": { "type": "string" }
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether this suite should be executed"
+          },
+          "tests": {
+            "type": "array",
+            "description": "Integration tests belonging to this suite",
+            "items": { "$ref": "#/$defs/integration_test" }
+          }
+        },
+        "required": ["name", "tests"]
+      }
+    },
+
+    "tests": {
+      "type": "array",
+      "description": "Flat list of integration tests (alternative to test_suites organization)",
+      "items": { "$ref": "#/$defs/integration_test" }
+    }
+  },
+
+  "$defs": {
+    "auth": {
+      "type": "object",
+      "description": "Auth configuration using only env variable names or vault keys",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["bearer", "basic", "api_key", "oauth2", "none"]
+        },
+        "bearer": {
+          "type": "object",
+          "properties": {
+            "token_env_name": {
+              "type": "string",
+              "description": "Env var or vault key name containing the bearer token"
+            },
+            "prefix": {
+              "type": "string",
+              "default": "Bearer",
+              "description": "Prefix for the token (e.g., 'Bearer', 'Token')"
+            }
+          }
+        },
+        "basic": {
+          "type": "object",
+          "properties": {
+            "username_env_name": { "type": "string" },
+            "password_env_name": { "type": "string" }
+          }
+        },
+        "api_key": {
+          "type": "object",
+          "properties": {
+            "key_env_name": { "type": "string" },
+            "location": {
+              "type": "string",
+              "enum": ["header", "query"],
+              "default": "header"
+            },
+            "header_or_param_name": {
+              "type": "string",
+              "description": "Header or query param name"
+            }
+          }
+        },
+        "oauth2": {
+          "type": "object",
+          "properties": {
+            "token_url_env_name": { "type": "string" },
+            "client_id_env_name": { "type": "string" },
+            "client_secret_env_name": { "type": "string" },
+            "scope_env_name": { "type": "string" }
+          }
+        }
+      },
+      "required": ["type"]
+    },
+
+    "integration_test": {
+      "type": "object",
+      "description": "Individual integration test case definition",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Descriptive name for this integration test"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of what this integration test validates"
+        },
+        "tags": {
+          "type": "array",
+          "description": "Tags for categorizing and filtering integration tests",
+          "items": { "type": "string" }
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["critical", "high", "medium", "low"],
+          "description": "Test priority for execution ordering and reporting"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether this test should be executed"
+        },
+        "depends_on": {
+          "type": "array",
+          "description": "Names of tests that must run successfully before this test",
+          "items": { "type": "string" }
+        },
+
+        "components": {
+          "type": "array",
+          "description": "Logical components or services involved in this integration test",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Component/service name (e.g., 'user-service', 'orders-db')"
+              },
+              "role": {
+                "type": "string",
+                "description": "Role of this component in the scenario (e.g., 'producer', 'consumer', 'data-store')"
+              }
+            },
+            "required": ["name"]
+          }
+        },
+
+        "entrypoint": {
+          "type": "object",
+          "description": "Where this integration test starts",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": ["function", "http", "cli", "message", "other"],
+              "description": "Type of entrypoint"
+            },
+            "module": {
+              "type": "string",
+              "description": "For function entrypoints: Python module path"
+            },
+            "object": {
+              "type": "string",
+              "description": "For function entrypoints: function or class"
+            },
+            "method": {
+              "type": "string",
+              "description": "Optional: method on class for function entrypoints"
+            },
+            "http": {
+              "type": "object",
+              "description": "For HTTP entrypoints",
+              "properties": {
+                "method": {
+                  "type": "string",
+                  "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]
+                },
+                "url": {
+                  "type": "string",
+                  "description": "Relative or absolute URL"
+                },
+                "headers": {
+                  "type": "object",
+                  "additionalProperties": { "type": "string" }
+                }
+              }
+            },
+            "cli": {
+              "type": "object",
+              "description": "For CLI entrypoints",
+              "properties": {
+                "command": {
+                  "type": "string",
+                  "description": "Base command to run"
+                },
+                "args": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                }
+              }
+            },
+            "message": {
+              "type": "object",
+              "description": "For message/queue entrypoints",
+              "properties": {
+                "queue": {
+                  "type": "string",
+                  "description": "Queue/topic name"
+                },
+                "key": {
+                  "type": "string",
+                  "description": "Optional partition key/routing key"
+                }
+              }
+            },
+            "auth": {
+              "$ref": "#/$defs/auth"
+            }
+          },
+          "required": ["kind"]
+        },
+
+        "inputs": {
+          "type": "object",
+          "description": "Input data/events for this integration scenario",
+          "properties": {
+            "payload": {
+              "description": "Main payload sent to the entrypoint",
+              "additionalProperties": true
+            },
+            "headers": {
+              "type": "object",
+              "description": "Additional headers/metadata if applicable",
+              "additionalProperties": true
+            },
+            "environment_overrides": {
+              "type": "object",
+              "description": "Environment variables to override for this test",
+              "additionalProperties": { "type": "string" }
+            }
+          }
+        },
+
+        "mock_data": {
+          "type": "object",
+          "description": "Optional structured mock or seeded data available for this integration test",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Whether this test should prepare mock/seed data"
+            },
+            "strategy": {
+              "type": "string",
+              "enum": ["inline", "file", "factory"],
+              "default": "inline",
+              "description": "How mock/seed data is provided"
+            },
+            "fixtures": {
+              "type": "array",
+              "description": "List of datasets/fixtures to prepare",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Fixture name"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "scope": {
+                    "type": "string",
+                    "enum": ["test", "suite"],
+                    "default": "test"
+                  },
+                  "target": {
+                    "type": "string",
+                    "description": "Where this data is applied (e.g., 'postgres.users', 'redis.cache')"
+                  },
+                  "data": {
+                    "type": "array",
+                    "description": "Inline records if strategy is 'inline'",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  },
+                  "file_path": {
+                    "type": "string",
+                    "description": "Path to external data file if strategy is 'file'"
+                  },
+                  "factory_name": {
+                    "type": "string",
+                    "description": "Factory/fixture function name if strategy is 'factory'"
+                  }
+                },
+                "required": ["name"]
+              }
+            }
+          }
+        },
+
+        "expected_state": {
+          "type": "object",
+          "description": "Expected system state after the scenario completes",
+          "properties": {
+            "datastores": {
+              "type": "array",
+              "description": "Assertions on DBs/kv-stores/etc.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "target": {
+                    "type": "string",
+                    "description": "Target datastore (e.g., 'postgres.users', 'redis.sessions')"
+                  },
+                  "assertions": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "description": {
+                          "type": "string"
+                        },
+                        "query": {
+                          "type": "string",
+                          "description": "Query or lookup operation"
+                        },
+                        "expected": {
+                          "description": "Expected result or shape"
+                        }
+                      },
+                      "required": ["description"]
+                    }
+                  }
+                },
+                "required": ["target"]
+              }
+            },
+            "messages": {
+              "type": "array",
+              "description": "Assertions on messages/queues/topics",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "queue": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "expected_count": {
+                    "type": "integer"
+                  },
+                  "expected_payload_match": {
+                    "description": "Pattern or structure expected in messages",
+                    "additionalProperties": true
+                  }
+                },
+                "required": ["queue"]
+              }
+            }
+          }
+        },
+
+        "expected_logs": {
+          "type": "array",
+          "description": "Expected log patterns or entries",
+          "items": {
+            "type": "object",
+            "properties": {
+              "level": {
+                "type": "string",
+                "description": "Log level (INFO, ERROR, etc.)"
+              },
+              "contains": {
+                "type": "string",
+                "description": "Substring that should appear in log"
+              },
+              "count_at_least": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        },
+
+        "variations": {
+          "type": "array",
+          "description": "Variations derived from this base integration test",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Name for this variation"
+              },
+              "details": {
+                "type": "string",
+                "description": "Description of what this variation tests"
+              },
+              "kind": {
+                "type": "string",
+                "enum": ["positive", "edge", "negative"]
+              },
+              "enabled": {
+                "type": "boolean",
+                "default": true
+              },
+              "input_overrides": {
+                "type": "object",
+                "description": "Overrides to inputs for this variation",
+                "additionalProperties": true
+              },
+              "expected_state_overrides": {
+                "type": "object",
+                "description": "Overrides to expected state for this variation",
+                "additionalProperties": true
+              },
+              "order": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Execution order within variations"
+              }
+            }
+          }
+        },
+
+        "order": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Execution order among all integration tests (must be unique)"
+        }
+      },
+      "required": ["name", "entrypoint", "enabled"]
+    }
+  }
+}
+

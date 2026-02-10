@@ -1,0 +1,544 @@
+{
+    "$schema": "http://json-schema.org/draft/2020-12/schema#",
+    "title": "API Test Generation Configuration",
+    "type": "object",
+    "properties": {
+        "metadata": {
+            "type": "object",
+            "description": "Root-level metadata about the test suite",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Name of the test suite"
+                },
+                "version": {
+                    "type": "string",
+                    "description": "Version of this test configuration"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "author": {
+                    "type": "string"
+                },
+                "created_date": {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            }
+        },
+        "base_url": {
+            "type": "string",
+            "description": "Deprecated: Use environments instead. Kept for backward compatibility"
+        },
+        "global_auth": {
+            "description": "This is Global authentication configuration for all tests, can be overridden by individual test case, Imp: All required environment variables are already set in the runtime environment and are accessible via standard environment variable lookup.",
+            "$ref": "#/$defs/auth" 
+        },
+        "global_headers": {
+            "type": "object",
+            "description": "Headers to include in all requests",
+            "additionalProperties": {"type": "string"}
+        },
+        "global_tags": {
+            "type": "array",
+            "description": "Tags applied to all tests unless overridden",
+            "items": {"type": "string"}
+        },
+        "pre_test_all": {
+            "type": "object",
+            "description": "Setup executed once before all tests (e.g., login, fetch credentials)",
+            "properties": {
+                "implementation_details": {"type": "string"},
+                "script": {"type": "string"},
+                "save_variables": {
+                    "type": "object",
+                    "description": "Variables to extract and save for use in tests",
+                    "additionalProperties": {"type": "string"}
+                },
+                "auth" : {
+                    "type" : "object",
+                    "properties": {
+                        "auth" : {
+                            "$ref": "#/$defs/auth" }
+                        },
+                        "context": {
+                            "enum": ["override", "merge", "secondary"],
+                            "default": "override",
+                            "description" : "it can only overide global_auth."
+                        }
+                    }
+            },
+            "additionalProperties": true
+        },
+        "pre_test_tagged": {
+            "type": "object",
+            "description": "Setup for specific tagged test groups",
+            "properties": {
+                "tagged": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "tag": {"type": "string"},
+                            "sub_tag": {
+                                "type": "array",
+                                "description": "Specific sub-tags within the tag. Empty means all sub-tags",
+                                "items": {"type": "string"}
+                            },
+                            "implementation_details": {"type": "string"},
+                            "script": {"type": "string"},
+                            "auth" : {
+                                "type" : "object",
+                                 "properties": {
+                                    "auth" : {
+                                        "$ref": "#/$defs/auth" }
+                                    },
+                                    "context": {
+                                        "enum": ["override", "merge", "secondary"],
+                                        "default": "override",
+                                        "description" : "it can only overide global_auth and pre_test_all, and pre_test_each"
+                                    }
+                                }
+                        },
+                        "required": ["tag"]
+                    }
+                }
+            },
+            "additionalProperties": true
+        },
+        "pre_test_each": {
+            "type": "object",
+            "description": "Setup executed before each individual test",
+            "properties": {
+                "implementation_details": {"type": "string"},
+                "script": {"type": "string"},
+                "auth" : {
+                    "type" : "object",
+                    "properties": {
+                        "auth" : {
+                            "$ref": "#/$defs/auth" }
+                        },
+                        "context": {
+                            "enum": ["override", "merge", "secondary"],
+                            "default": "override",
+                            "description" : "it can only overide global_auth and pre_test_all"   
+                        }
+                    }
+            },
+            "additionalProperties": true
+        },
+        "post_test_all": {
+            "type": "object",
+            "description": "Cleanup executed once after all tests complete",
+            "additionalProperties": true
+        },
+        "post_test_each": {
+            "type": "object",
+            "description": "Cleanup executed after each individual test",
+            "additionalProperties": true
+        },
+        "post_test_tagged": {
+            "type": "object",
+            "description": "Cleanup for specific tagged test groups",
+            "additionalProperties": true
+        },
+        "test_suites": {
+            "type": "array",
+            "description": "Organized collection of test groups",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Name of this test suite"
+                    },
+                    "description": {"type": "string"},
+                    "base_path": {
+                        "type": "string",
+                        "description": "Common path prefix for all endpoints in this suite (e.g., /api/v1/users)"
+                    },
+                    "tags": {
+                        "type": "array",
+                        "description": "Tags applied to all tests in this suite",
+                        "items": {"type": "string"}
+                    },
+                    "enabled": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Whether this suite should be executed"
+                    },
+                    "tests": {
+                        "type": "array",
+                        "description": "Tests belonging to this suite",
+                        "items": {"$ref": "#/$defs/test"}
+                    }
+                },
+                "required": ["name", "tests"]
+            }
+        },
+        "tests": {
+            "type": "array",
+            "description": "Flat list of tests (alternative to test_suites organization)",
+            "items": {"$ref": "#/$defs/test" }
+        }
+    },
+    "$defs": {
+        "test": {
+            "type": "object",
+            "description": "Individual test case definition",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Descriptive name for this test"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Detailed description of what this test validates"
+                },
+                "tags": {
+                    "type": "array",
+                    "description": "Tags for categorizing and filtering tests",
+                    "items": {"type": "string"},
+                    "examples": [["smoke", "regression", "user_management"]]
+                },
+                "tag": {
+                    "type": "string",
+                    "description": "Deprecated: Use 'tags' array instead. Primary tag for pre/post test hooks"
+                },
+                "priority": {
+                    "type": "string",
+                    "enum": ["critical", "high", "medium", "low"],
+                    "description": "Test priority for execution ordering and reporting"
+                },
+                "enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Whether this test should be executed, set false for high risk tests"
+                },
+                "depends_on": {
+                    "type": "array",
+                    "description": "Names of tests that must run successfully before this test",
+                    "items": {"type": "string"}
+                },
+                "use_response_from": {
+                    "type": "object",
+                    "description": "Extract data from a previous test's response",
+                    "properties": {
+                        "test_name": {"type": "string"},
+                        "extractions": {
+                            "type": "object",
+                            "description": "Map of variable names to JSON paths",
+                            "additionalProperties": {"type": "string"},
+                            "examples": [{"userId": "response.data.id", "token": "response.token"}]
+                        }
+                    },
+                    "required": ["test_name", "extractions"]
+                },
+                "method": {
+                    "type": "string",
+                    "enum": ["GET", "POST", "DELETE", "PUT", "PATCH", "HEAD", "OPTIONS"]
+                },
+                "endpoint": {
+                    "type": "string",
+                    "description": "API endpoint path (can include path parameter placeholders), place  empty string if no endpoint"
+                },
+                "auth" : {
+                    "type" : "object",
+                    "properties": {
+                        "auth_type" : {
+                            "$ref": "#/$defs/auth" }
+                        },
+                        "context": {
+                            "description" : "mention if it should other auth defined",
+                            "enum": ["override", "merge", "secondary"],
+                            "default": "override"
+                        }
+                    },
+                "path_params": {
+                    "type": "object",
+                    "description": "Values for path parameters (e.g., /users/{userId})",
+                    "additionalProperties": true,
+                    "examples": [{"userId": "123", "orderId": "456"}]
+                },
+                "query_params": {
+                    "type": "object",
+                    "description": "URL query parameters",
+                    "additionalProperties": true,
+                    "examples": [{"page": 1, "limit": 10, "sort": "name"}]
+                },
+                "headers": {
+                    "type": "object",
+                    "description": "Request headers (merged with global_headers)",
+                    "additionalProperties": {"type": "string"}
+                },
+                "request_body": {
+                    "type": "object",
+                    "description": "Request body payload",
+                    "additionalProperties": true
+                },
+                "request_body_meta": {
+                    "type": "object",
+                    "description": "Metadata about the request body structure",
+                    "additionalProperties": true
+                },
+                "request_body_source": {
+                    "type": "object",
+                    "description": "External source for request body data",
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["file", "database", "previous_test", "inline"]
+                        },
+                        "file_path": {"type": "string"},
+                        "db_query": {"type": "string"},
+                        "from_test": {"type": "string"},
+                        "extract_path": {"type": "string"},
+                        "save": {
+                            "type": "object",
+                            "description": "Variables to save from the source data"
+                        }
+                    },
+                    "additionalProperties": true
+                },
+                "gen_sample_data": {
+                    "type": "boolean",
+                    "description": "Have LLM generate sample request data based on schema"
+                },
+                "expected_response": {
+                    "type": "object",
+                    "description": "Expected response criteria for test validation",
+                    "properties": {
+                        "status_code": {
+                            "type": "integer",
+                            "description": "Expected HTTP status code"
+                        },
+                        "status_codes": {
+                            "type": "array",
+                            "description": "List of acceptable status codes",
+                            "items": {"type": "integer"}
+                        },
+                        "schema_validation": {
+                            "type": "boolean",
+                            "description": "Validate response against OpenAPI schema"
+                        },
+                        "response_body": {
+                            "type": "object",
+                            "description": "Expected response body (exact match or partial)",
+                            "additionalProperties": true
+                        },
+                        "headers_contain": {
+                            "type": "object",
+                            "description": "Headers that must be present in response",
+                            "additionalProperties": true
+                        },
+                        "max_response_time_ms": {
+                            "type": "number",
+                            "description": "Maximum acceptable response time"
+                        }
+                    }
+                },
+                "assertions": {
+                    "type": "array",
+                    "description": "Detailed assertions to validate response",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "field": {
+                                "type": "string",
+                                "description": "JSON path to field (e.g., 'response.data.id')"
+                            },
+                            "condition": {
+                                "type": "string",
+                                "enum": ["equals", "not_equals", "contains", "not_contains", "exists", "not_exists", "greater_than", "less_than", "matches_regex", "length_equals", "is_type"]
+                            },
+                            "value": {
+                                "description": "Expected value for the condition"
+                            },
+                            "description": {
+                                "type": "string",
+                                "description": "Human-readable description of this assertion"
+                            }
+                        },
+                        "required": ["field", "condition"]
+                    }
+                },
+                "save_response": {
+                    "type": "object",
+                    "description": "Extract and save values from response for later use",
+                    "additionalProperties": {"type": "string"},
+                    "examples": [{"userId": "response.data.id", "authToken": "response.token"}]
+                },
+                "retry_timeout": {
+                    "type": "object",
+                    "properties": {
+                        "max_attempts": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "default": 1
+                        },
+                        "backoff_ms": {
+                            "type": "number",
+                            "description": "Milliseconds to wait between retries"
+                        },
+                        "timeout_ms": {
+                            "type": "number",
+                            "description": "Request timeout in milliseconds"
+                        }
+                    }
+                },
+                "variations": {
+                    "type": "array",
+                    "description": "Test variations generated from base test",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "Name for this variation"
+                            },
+                            "details": {
+                                "type": "string",
+                                "description": "Description of what this variation tests"
+                            },
+                            "kind": {
+                                "type": "string",
+                                "enum": ["positive", "edge", "negative"]
+                            },
+                            "sub_tag": {"type": "string"},
+                            "enabled": {
+                                "type": "boolean",
+                                "default": true
+                            },
+                            "modifications": {
+                                "type": "object",
+                                "description": "Structured modifications to apply",
+                                "properties": {
+                                    "remove_fields": {
+                                        "type": "array",
+                                        "items": {"type": "string"}
+                                    },
+                                    "add_fields": {
+                                        "type": "object",
+                                        "additionalProperties": true
+                                    },
+                                    "change_fields": {
+                                        "type": "object",
+                                        "additionalProperties": true
+                                    }
+                                }
+                            },
+                            "change_field": {
+                                "type": "array",
+                                "description": "Deprecated: Use 'modifications' instead",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "field": {"type": "string"},
+                                        "change_to": {}
+                                    }
+                                }
+                            },
+                            "extra_field": {
+                                "type": "array",
+                                "items": {}
+                            },
+                            "change_method": {
+                                "type": "string",
+                                "description": "Override HTTP method for this variation"
+                            },
+                            "expected_response": {
+                                "type": "object",
+                                "description": "Expected response for this variation",
+                                "properties": {
+                                    "status_code": {"type": "integer"},
+                                    "schema_validation": {"type": "boolean"},
+                                    "response_body": {
+                                        "type": "object",
+                                        "additionalProperties": true
+                                    },
+                                    "headers_contain": {
+                                        "type": "object",
+                                        "additionalProperties": true
+                                    },
+                                    "max_response_time_ms": {"type": "number"}
+                                }
+                            },
+                            "sub_order": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "description": "Execution order within variations"
+                            }
+                        }
+                    }
+                },
+                "order": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Execution order among all tests (must be unique)"
+                }
+            },
+            "required": ["method", "enabled", "name","endpoint"]
+        },
+        "auth": {
+            "type": "object",
+            "description": "Imp: All required environment variables are already set in the runtime environment and are accessible via standard environment variable lookup.",
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "enum": ["bearer", "basic", "api_key", "oauth2", "digest", "none"]
+                },
+                "bearer": {
+                    "type": "object",
+                    "properties": {
+                        "token_env_name": {
+                            "type": "string",
+                            "description": "Environment variable name containing the bearer token"
+                        },
+                        "token_prefix_env_name": {
+                            "type": "string",
+                            "default": "Bearer",
+                            "description": "variable name for Prefix for the token (e.g., 'Bearer', 'Token')"
+                        }
+                    }
+                },
+                "basic": {
+                    "type": "object",
+                    "properties": {
+                        "username_env_name": {"type": "string"},
+                        "password_env_name": {"type": "string"}
+                    },
+                    "required": ["username_env_name", "password_env_name"]
+                },
+                "api_key": {
+                    "type": "object",
+                    "properties": {
+                        "key_env_var_name": {"type": "string"},
+                        "location_var_name": {
+                            "description": "set env var as header : hearder or query : query",
+                            "type": "string",
+                            "enum": ["header", "query"],
+                            "default": "header"
+                        },
+                        "header_queryParam_var_name": {
+                            "type": "string",
+                            "description": "Header name or query parameter name"
+                        }
+                    },
+                    "required": ["key_env_var_name", "header_queryParam_var_name"]
+                },
+                "oauth2": {
+                    "type": "object",
+                    "properties": {
+                        "token_url_var_name": {"type": "string"},
+                        "client_id_env_var_name": {"type": "string"},
+                        "client_secret_env_var_name": {"type": "string"},
+                        "scope_var_name": {"type": "string"}
+                    },
+                    "required": ["token_url_var_name", "client_id_env_var_name", "client_secret_env_var_name"]
+                }
+            },
+            "required": ["type"]
+        }
+    }
+}
