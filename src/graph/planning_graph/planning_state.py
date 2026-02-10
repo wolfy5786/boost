@@ -25,6 +25,20 @@ class PlanStep(TypedDict):
     error_message: Optional[str]  # populated on failure
 
 
+class ArtifactsInfo(TypedDict, total=False):
+    """Information about existing specs/tests for a given target + test_type.
+
+    This is typically populated by an MCP-powered inspection step before or
+    during planning, so that `build_plan` can decide which steps are actually
+    needed (e.g. skip spec generation if specs already exist).
+    """
+
+    spec_exists: bool
+    tests_exist: bool
+    spec_paths: List[str]
+    test_paths: List[str]
+
+
 class PlanningAgentState(TypedDict):
     """Shared state for the Planning Agent graph.
 
@@ -39,6 +53,21 @@ class PlanningAgentState(TypedDict):
     user_request: str
     test_type: Optional[Literal["api", "unit", "integration", "e2e", "performance"]]
     target: Optional[str]  # file/module/endpoint/scenario to test
+
+    # High-level operation / intent for this run.
+    # If not provided, an earlier node may infer it from `user_request`.
+    operation: Optional[
+        Literal[
+            "generate_and_run",  # full flow: specs + tests + run
+            "generate_only",     # generate/update specs/tests, do not run
+            "run_only",          # only run existing tests
+            "update_specs",      # refresh or extend specs only
+            "analyze_results",   # analyze existing test results
+        ]
+    ]
+
+    # Information about existing artifacts for (target, test_type).
+    artifacts: ArtifactsInfo
 
     # Plan and progress
     plan: List[PlanStep]
@@ -55,6 +84,7 @@ class PlanningAgentState(TypedDict):
 
 __all__ = [
     "PlanStep",
+    "ArtifactsInfo",
     "PlanningAgentState",
 ]
 
